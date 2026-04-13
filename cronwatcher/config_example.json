@@ -1,27 +1,28 @@
 {
-  "log_file": "/var/log/cronwatcher.log",
-  "state_file": "/tmp/cronwatcher_state.json",
-  "default_alert_email": "ops@example.com",
   "jobs": [
     {
       "name": "daily-backup",
       "schedule": "0 2 * * *",
-      "timeout": 600,
-      "alert_email": "backup-team@example.com",
-      "tags": ["backup", "critical"]
-    },
-    {
-      "name": "hourly-sync",
-      "schedule": "0 * * * *",
+      "command": "/usr/local/bin/backup.sh",
       "timeout": 120,
-      "tags": ["sync"]
+      "enabled": true
     },
     {
-      "name": "weekly-report",
-      "schedule": "0 9 * * 1",
-      "timeout": 300,
-      "alert_email": "reports@example.com",
-      "tags": ["reports", "weekly"]
+      "name": "health-check",
+      "schedule": "*/5 * * * *",
+      "command": "curl -sf http://localhost:8080/health",
+      "timeout": 10,
+      "enabled": true
     }
-  ]
+  ],
+  "history_path": "/var/log/cronwatcher_history.json",
+  "alert_on_missed": true,
+  "notifier": {
+    "smtp_host": "smtp.example.com",
+    "smtp_port": 587,
+    "sender": "alerts@example.com",
+    "recipients": ["ops@example.com"],
+    "username": "alerts@example.com",
+    "password": "secret"
+  }
 }

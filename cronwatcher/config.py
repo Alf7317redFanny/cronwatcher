@@ -1,58 +1,52 @@
-"""Configuration loader for cronwatcher."""
+"""Configuration loading for cronwatcher."""
 
-import os
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
-from typing import List, Optional
+from pathlib import Path
+from typing import Any
 
 
 @dataclass
 class JobConfig:
     name: str
     schedule: str
-    timeout: int = 300  # seconds
-    alert_email: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
+    command: str
+    timeout: int = 60
+    enabled: bool = True
 
-    def __post_init__(self):
-        if not self.name:
-            raise ValueError("Job name cannot be empty")
-        if not self.schedule:
-            raise ValueError("Job schedule cannot be empty")
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("Job name must not be empty.")
+        if not self.schedule.strip():
+            raise ValueError("Job schedule must not be empty.")
+        if not self.command.strip():
+            raise ValueError("Job command must not be empty.")
         if self.timeout <= 0:
-            raise ValueError("Timeout must be a positive integer")
+            raise ValueError("Job timeout must be a positive integer.")
 
 
 @dataclass
 class WatcherConfig:
-    jobs: List[JobConfig] = field(default_factory=list)
-    log_file: str = "/var/log/cronwatcher.log"
-    state_file: str = "/tmp/cronwatcher_state.json"
-    default_alert_email: Optional[str] = None
+    jobs: list[JobConfig]
+    history_path: str = "cronwatcher_history.json"
+    notifier: dict[str, Any] | None = None
+    alert_on_missed: bool = True
 
     @classmethod
-    def from_dict(cls, data: dict) -> "WatcherConfig":
-        jobs = [
-            JobConfig(
-                name=j["name"],
-                schedule=j["schedule"],
-                timeout=j.get("timeout", 300),
-                alert_email=j.get("alert_email"),
-                tags=j.get("tags", []),
-            )
-            for j in data.get("jobs", [])
-        ]
+    def from_dict(cls, data: dict[str, Any]) -> "WatcherConfig":
+        jobs = [JobConfig(**j) for j in data.get("jobs", [])]
         return cls(
             jobs=jobs,
-            log_file=data.get("log_file", "/var/log/cronwatcher.log"),
-            state_file=data.get("state_file", "/tmp/cronwatcher_state.json"),
-            default_alert_email=data.get("default_alert_email"),
+            history_path=data.get("history_path", "cronwatcher_history.json"),
+            notifier=data.get("notifier"),
+            alert_on_missed=data.get("alert_on_missed", True),
         )
 
-    @classmethod
-    def load(cls, path: str) -> "WatcherConfig":
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Config file not found: {path}")
-        with open(path, "r") as f:
-            data = json.load(f)
-        return cls.from_dict(data)
+
+def load(path: Path) -> WatcherConfig:
+    """Load a WatcherConfig from a JSON file."""
+    with open(path, "r") as f:
+        data = json.load(f)
+    return WatcherConfig.from_dict(data)
