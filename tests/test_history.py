@@ -3,6 +3,7 @@
 import json
 import os
 import tempfile
+import time
 
 import pytest
 
@@ -64,7 +65,7 @@ def test_for_job_filters_correctly(history):
 
 def test_for_job_returns_newest_first(history):
     history.add(make_record("job_a", success=True))
-    import time; time.sleep(0.01)
+    time.sleep(0.01)
     history.add(make_record("job_a", success=False))
 
     records = history.for_job("job_a")
@@ -73,7 +74,7 @@ def test_for_job_returns_newest_first(history):
 
 def test_last_run_returns_most_recent(history):
     history.add(make_record("myjob", success=True))
-    import time; time.sleep(0.01)
+    time.sleep(0.01)
     history.add(make_record("myjob", success=False, exit_code=2))
 
     last = history.last_run("myjob")
@@ -83,6 +84,18 @@ def test_last_run_returns_most_recent(history):
 
 def test_last_run_returns_none_for_unknown_job(history):
     assert history.last_run("ghost_job") is None
+
+
+def test_multiple_adds_accumulate(history, tmp_history_path):
+    """Ensure successive adds append records rather than overwriting."""
+    history.add(make_record("job_x", success=True))
+    history.add(make_record("job_x", success=False))
+    history.add(make_record("job_y", success=True))
+
+    with open(tmp_history_path) as f:
+        data = json.load(f)
+    assert len(data) == 3
+    assert len(history.records) == 3
 
 
 def test_run_record_repr():
