@@ -50,6 +50,11 @@ def test_tags_for_untagged_job(index):
     assert index.tags_for_job("ping") == []
 
 
+def test_tags_for_unknown_job(index):
+    """Jobs not in the index should return an empty list, not raise."""
+    assert index.tags_for_job("does_not_exist") == []
+
+
 def test_filter_jobs_by_single_tag(index, jobs):
     result = index.filter_jobs(jobs, ["weekly"])
     assert len(result) == 1
@@ -65,6 +70,12 @@ def test_filter_jobs_by_multiple_tags(index, jobs):
 def test_filter_jobs_empty_tags_returns_all(index, jobs):
     result = index.filter_jobs(jobs, [])
     assert len(result) == len(jobs)
+
+
+def test_filter_jobs_unknown_tag_returns_empty(index, jobs):
+    """Filtering by a tag that no job has should return an empty list."""
+    result = index.filter_jobs(jobs, ["nonexistent"])
+    assert result == []
 
 
 def test_repr(index):
