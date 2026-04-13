@@ -1,28 +1,39 @@
 {
   "jobs": [
     {
-      "name": "daily-backup",
+      "name": "database-backup",
       "schedule": "0 2 * * *",
       "command": "/usr/local/bin/backup.sh",
-      "timeout": 120,
-      "enabled": true
+      "timeout": 300
     },
     {
-      "name": "health-check",
-      "schedule": "*/5 * * * *",
-      "command": "curl -sf http://localhost:8080/health",
-      "timeout": 10,
-      "enabled": true
+      "name": "log-rotate",
+      "schedule": "0 0 * * 0",
+      "command": "logrotate /etc/logrotate.conf",
+      "timeout": 60
     }
   ],
-  "history_path": "/var/log/cronwatcher_history.json",
-  "alert_on_missed": true,
   "notifier": {
     "smtp_host": "smtp.example.com",
     "smtp_port": 587,
     "sender": "alerts@example.com",
-    "recipients": ["ops@example.com"],
-    "username": "alerts@example.com",
-    "password": "secret"
+    "recipients": ["ops@example.com"]
+  },
+  "webhooks": [
+    {
+      "url": "https://hooks.example.com/cronwatcher",
+      "method": "POST",
+      "secret": "changeme",
+      "timeout": 10
+    },
+    {
+      "url": "https://hooks.slack.com/services/XXX/YYY/ZZZ",
+      "method": "POST",
+      "timeout": 8
+    }
+  ],
+  "retention": {
+    "max_records": 500,
+    "max_age_days": 30
   }
 }
