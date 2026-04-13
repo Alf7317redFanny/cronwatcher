@@ -1,0 +1,27 @@
+{
+  "log_file": "/var/log/cronwatcher.log",
+  "state_file": "/tmp/cronwatcher_state.json",
+  "default_alert_email": "ops@example.com",
+  "jobs": [
+    {
+      "name": "daily-backup",
+      "schedule": "0 2 * * *",
+      "timeout": 600,
+      "alert_email": "backup-team@example.com",
+      "tags": ["backup", "critical"]
+    },
+    {
+      "name": "hourly-sync",
+      "schedule": "0 * * * *",
+      "timeout": 120,
+      "tags": ["sync"]
+    },
+    {
+      "name": "weekly-report",
+      "schedule": "0 9 * * 1",
+      "timeout": 300,
+      "alert_email": "reports@example.com",
+      "tags": ["reports", "weekly"]
+    }
+  ]
+}
