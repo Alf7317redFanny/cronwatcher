@@ -1,83 +1,77 @@
-"""Persistent job run history tracking using a simple JSON file store."""
-
-from __future__ import annotations
+"""Persistent run history for cron jobs."""
 
 import json
-import os
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional
 
 
 @dataclass
 class RunRecord:
     job_name: str
-    ran_at: str  # ISO format
-    success: bool
-    exit_code: Optional[int] = None
-    error_message: Optional[str] = None
+    ran_at: datetime
+    status: str  # "success" | "failure"
+    output: str
+    duration: float  # seconds
 
     def __repr__(self) -> str:
-        status = "OK" if self.success else "FAIL"
-        return f"<RunRecord job={self.job_name} at={self.ran_at} status={status}>"
+        return f"<RunRecord job={self.job_name} status={self.status} at={self.ran_at}>"
 
 
-@dataclass
 class History:
-    path: str
-    records: List[RunRecord] = field(default_factory=list)
+    def __init__(self, path: Path):
+        self.path = Path(path)
+        self._records: Dict[str, List[RunRecord]] = {}
 
     def load(self) -> None:
-        """Load records from disk if the history file exists."""
-        if not os.path.exists(self.path):
+        if not self.path.exists():
             return
-        with open(self.path, "r") as f:
+        with self.path.open() as f:
             raw = json.load(f)
-        self.records = [
-            RunRecord(
-                job_name=r["job_name"],
-                ran_at=r["ran_at"],
-                success=r["success"],
-                exit_code=r.get("exit_code"),
-                error_message=r.get("error_message"),
-            )
-            for r in raw
-        ]
+        for job_name, entries in raw.items():
+            self._records[job_name] = [
+                RunRecord(
+                    job_name=e["job_name"],
+                    ran_at=datetime.fromisoformat(e["ran_at"]),
+                    status=e["status"],
+                    output=e["output"],
+                    duration=e["duration"],
+                )
+                for e in entries
+            ]
 
     def save(self) -> None:
-        """Persist current records to disk."""
-        with open(self.path, "w") as f:
-            json.dump([asdict(r) for r in self.records], f, indent=2)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            job_name: [
+                {
+                    "job_name": r.job_name,
+                    "ran_at": r.ran_at.isoformat(),
+                    "status": r.status,
+                    "output": r.output,
+                    "duration": r.duration,
+                }
+                for r in records
+            ]
+            for job_name, records in self._records.items()
+        }
+        with self.path.open("w") as f:
+            json.dump(data, f, indent=2)
 
     def add(self, record: RunRecord) -> None:
-        """Append a new record and persist immediately."""
-        self.records.append(record)
+        self._records.setdefault(record.job_name, []).append(record)
         self.save()
 
-    def for_job(self, job_name: str) -> List[RunRecord]:
-        """Return all records for a specific job, newest first."""
-        return sorted(
-            [r for r in self.records if r.job_name == job_name],
-            key=lambda r: r.ran_at,
-            reverse=True,
-        )
+    def get(self, job_name: str) -> List[RunRecord]:
+        return self._records.get(job_name, [])
 
-    def last_run(self, job_name: str) -> Optional[RunRecord]:
-        """Return the most recent record for a job, or None."""
-        records = self.for_job(job_name)
-        return records[0] if records else None
+    def get_last(self, job_name: str) -> Optional[RunRecord]:
+        records = self.get(job_name)
+        return records[-1] if records else None
 
+    def all_jobs(self) -> List[str]:
+        return list(self._records.keys())
 
-def make_record(
-    job_name: str,
-    success: bool,
-    exit_code: Optional[int] = None,
-    error_message: Optional[str] = None,
-) -> RunRecord:
-    return RunRecord(
-        job_name=job_name,
-        ran_at=datetime.utcnow().isoformat(),
-        success=success,
-        exit_code=exit_code,
-        error_message=error_message,
-    )
+    def recent(self, job_name: str, limit: int = 10) -> List[RunRecord]:
+        return self.get(job_name)[-limit:]
