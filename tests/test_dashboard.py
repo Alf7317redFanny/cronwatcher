@@ -61,6 +61,20 @@ def test_row_reflects_history(dashboard, history):
     assert backup_row.run_count == 1
 
 
+def test_row_reflects_most_recent_run(dashboard, history):
+    """When multiple runs exist, the row should reflect the most recent one."""
+    first_run = datetime(2024, 6, 1, 2, 0, 0)
+    second_run = datetime(2024, 6, 2, 2, 0, 0)
+    history.add(RunRecord(job_name="backup", ran_at=first_run, status="failure", output="err", duration=0.5))
+    history.add(RunRecord(job_name="backup", ran_at=second_run, status="success", output="ok", duration=1.2))
+
+    rows = dashboard.build_rows()
+    backup_row = next(r for r in rows if r.name == "backup")
+    assert backup_row.last_run == second_run
+    assert backup_row.last_status == "success"
+    assert backup_row.run_count == 2
+
+
 def test_status_symbol_success():
     row = JobRow(name="x", schedule="* * * * *", last_run=None, last_status="success", next_run=None, run_count=1)
     assert row.status_symbol() == "✓"
