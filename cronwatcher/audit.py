@@ -43,10 +43,16 @@ class AuditLog:
         if not self.path.exists():
             return
         with self.path.open() as fh:
-            for line in fh:
+            for line_num, line in enumerate(fh, start=1):
                 line = line.strip()
-                if line:
+                if not line:
+                    continue
+                try:
                     self._events.append(AuditEvent.from_dict(json.loads(line)))
+                except (json.JSONDecodeError, KeyError) as exc:
+                    raise ValueError(
+                        f"Failed to parse audit log {self.path} at line {line_num}: {exc}"
+                    ) from exc
 
     def record(self, event_type: str, detail: str, job_name: Optional[str] = None) -> AuditEvent:
         event = AuditEvent(
