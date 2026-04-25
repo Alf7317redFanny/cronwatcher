@@ -61,11 +61,21 @@ def test_jobs_for_owner(index: OwnershipIndex) -> None:
     assert index.jobs_for_owner("bob") == ["job_b"]
 
 
+def test_jobs_for_owner_unknown_returns_empty(index: OwnershipIndex) -> None:
+    """jobs_for_owner should return an empty list for an owner with no jobs."""
+    assert index.jobs_for_owner("nobody") == []
+
+
 def test_jobs_for_team(index: OwnershipIndex) -> None:
     index.set("job_x", "alice", team="ops")
     index.set("job_y", "bob", team="dev")
     index.set("job_z", "carol", team="ops")
     assert sorted(index.jobs_for_team("ops")) == ["job_x", "job_z"]
+
+
+def test_jobs_for_team_unknown_returns_empty(index: OwnershipIndex) -> None:
+    """jobs_for_team should return an empty list for a team with no jobs."""
+    assert index.jobs_for_team("unknown_team") == []
 
 
 def test_persists_to_disk(state_file: Path) -> None:
