@@ -23,9 +23,15 @@ def add_cooldown_args(subparsers: argparse._SubParsersAction) -> None:  # type: 
     reset_p.add_argument("--default-seconds", type=int, default=60)
 
 
-def run_cooldown_cmd(args: argparse.Namespace) -> int:
+def _build_manager(args: argparse.Namespace) -> CooldownManager:
+    """Construct a CooldownManager from parsed CLI arguments."""
     policy = CooldownPolicy(default_seconds=args.default_seconds)
-    manager = CooldownManager(policy=policy, state_file=Path(args.state_file))
+    return CooldownManager(policy=policy, state_file=Path(args.state_file))
+
+
+def run_cooldown_cmd(args: argparse.Namespace) -> int:
+    """Dispatch a cooldown subcommand and return an exit code."""
+    manager = _build_manager(args)
 
     if args.cooldown_action == "status":
         cooling = manager.is_cooling_down(args.job)
